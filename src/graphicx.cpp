@@ -65,20 +65,21 @@ long colorDistance(const Rgb& a, const Rgb& b) {
     return (((512 + rmean) * dr * dr) >> 8) + 4 * dg * dg + (((767 - rmean) * db * db) >> 8);
 }
 
-// Nearest palette entry for every 15-bit color (5 bits per channel).  Built
-// once, on first use (C++11 guarantees a thread-safe one-time initialization
-// of function-local statics).  15 bits are plenty: the palette itself only
-// has 6 levels per channel.
+// Nearest palette entry for every 18-bit color (6 bits per channel): 256 KB,
+// built once, on first use (C++11 guarantees a thread-safe one-time
+// initialization of function-local statics).  6 bits keep the choice within
+// 3 levels of the exact answer, so subtle gradients (photos, color-corrected
+// game screens) still pick the right entry.
 const std::vector<std::uint8_t>& paletteTable() {
     static const std::vector<std::uint8_t> table = [] {
-        std::vector<std::uint8_t> t(32768);
+        std::vector<std::uint8_t> t(1 << 18);
         Rgb palette[240];
         for (int i = 0; i < 240; ++i) palette[i] = paletteColor(16 + i);
-        for (int c = 0; c < 32768; ++c) {
-            int r = c & 31, g = (c >> 5) & 31, b = (c >> 10) & 31;
-            Rgb color = rgb(static_cast<std::uint8_t>((r << 3) | (r >> 2)),
-                            static_cast<std::uint8_t>((g << 3) | (g >> 2)),
-                            static_cast<std::uint8_t>((b << 3) | (b >> 2)));
+        for (int c = 0; c < (1 << 18); ++c) {
+            int r = c & 63, g = (c >> 6) & 63, b = (c >> 12) & 63;
+            Rgb color = rgb(static_cast<std::uint8_t>((r << 2) | (r >> 4)),
+                            static_cast<std::uint8_t>((g << 2) | (g >> 4)),
+                            static_cast<std::uint8_t>((b << 2) | (b >> 4)));
             int best = 0;
             long bestDistance = -1;
             for (int i = 0; i < 240; ++i) {
@@ -372,7 +373,7 @@ Rgb paletteColor(int index) {
 }
 
 int nearestPaletteIndex(Rgb c) {
-    int key = (c.r >> 3) | ((c.g >> 3) << 5) | ((c.b >> 3) << 10);
+    int key = (c.r >> 2) | ((c.g >> 2) << 6) | ((c.b >> 2) << 12);
     return paletteTable()[static_cast<size_t>(key)];
 }
 

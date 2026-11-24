@@ -269,7 +269,7 @@ private:
 // cube, 232-255 = gray ramp).
 Rgb paletteColor(int index);
 // The palette entry (16-255) that looks closest to `color`.  Fast: uses a
-// 32K-entry table built on first use.
+// 256 KB table (6 bits per channel) built on first use (~0.1 s, once).
 int nearestPaletteIndex(Rgb color);
 // Perceived brightness of a color, 0-255 (Rec. 601 luma).
 int brightness(Rgb color);

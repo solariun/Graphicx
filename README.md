@@ -169,8 +169,8 @@ this way).
 ### Palette: `paletteColor`, `nearestPaletteIndex`, `brightness`
 
 - `paletteColor(i)`: the RGB value of xterm palette entry 16–255.
-- `nearestPaletteIndex(rgb)`: the closest entry, using a 32K-entry lookup
-  table built on first use.
+- `nearestPaletteIndex(rgb)`: the closest entry, using a 256 KB lookup table
+  (6 bits per channel) built once, on first use.
 - `brightness(rgb)`: perceived brightness, 0–255 (Rec. 601).
 
 Entries 0–15 are never used, because every terminal theme changes them.
