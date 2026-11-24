@@ -19,6 +19,7 @@
 //  terminal or any file (they run in CI and in pipes).
 // ============================================================================
 #include <cstdio>
+#include <random>
 #include <string>
 
 #include "graphicx/graphicx.h"
@@ -55,6 +56,38 @@ void testPalette() {
     CHECK(gfx::nearestPaletteIndex(gfx::rgb(255, 255, 255)) == 231);
     CHECK(gfx::brightness(gfx::rgb(255, 255, 255)) == 255);
     CHECK(gfx::brightness(gfx::rgb(0, 0, 0)) == 0);
+}
+
+// nearestPaletteIndex() must give exactly what a full search over the 240
+// entries gives (same distance formula, ties -> lowest index).
+long referenceDistance(gfx::Rgb a, gfx::Rgb b) {
+    long rmean = (static_cast<long>(a.r) + b.r) / 2;
+    long dr = static_cast<long>(a.r) - b.r, dg = static_cast<long>(a.g) - b.g, db = static_cast<long>(a.b) - b.b;
+    return (((512 + rmean) * dr * dr) >> 8) + 4 * dg * dg + (((767 - rmean) * db * db) >> 8);
+}
+
+int referenceNearest(gfx::Rgb c) {
+    int best = 16;
+    long bestDistance = -1;
+    for (int i = 16; i < 256; ++i) {
+        long d = referenceDistance(c, gfx::paletteColor(i));
+        if (bestDistance < 0 || d < bestDistance) {
+            bestDistance = d;
+            best = i;
+        }
+    }
+    return best;
+}
+
+void testPaletteExact() {
+    std::mt19937 random(12345);
+    int mismatches = 0;
+    for (int i = 0; i < 200000; ++i) {
+        gfx::Rgb c = gfx::rgb(static_cast<std::uint8_t>(random()), static_cast<std::uint8_t>(random()),
+                              static_cast<std::uint8_t>(random()));
+        if (gfx::nearestPaletteIndex(c) != referenceNearest(c)) ++mismatches;
+    }
+    CHECK(mismatches == 0);
 }
 
 void testImage() {
@@ -174,6 +207,7 @@ void testScreen() {
 
 int main() {
     testPalette();
+    testPaletteExact();
     testImage();
     testSizing();
     testRender();

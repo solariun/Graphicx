@@ -268,8 +268,9 @@ private:
 // The xterm 256-color palette entry `index` (16-255; 16-231 = 6x6x6 color
 // cube, 232-255 = gray ramp).
 Rgb paletteColor(int index);
-// The palette entry (16-255) that looks closest to `color`.  Fast: uses a
-// 256 KB table (6 bits per channel) built on first use (~0.1 s, once).
+// The palette entry (16-255) that looks closest to `color` (exact, same
+// answer as comparing against all 240 entries).  Fast: a table built once,
+// on first use (~0.2 s, ~2 MB), answers most colors directly.
 int nearestPaletteIndex(Rgb color);
 // Perceived brightness of a color, 0-255 (Rec. 601 luma).
 int brightness(Rgb color);

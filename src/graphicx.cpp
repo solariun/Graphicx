@@ -65,31 +65,96 @@ long colorDistance(const Rgb& a, const Rgb& b) {
     return (((512 + rmean) * dr * dr) >> 8) + 4 * dg * dg + (((767 - rmean) * db * db) >> 8);
 }
 
-// Nearest palette entry for every 18-bit color (6 bits per channel): 256 KB,
-// built once, on first use (C++11 guarantees a thread-safe one-time
-// initialization of function-local statics).  6 bits keep the choice within
-// 3 levels of the exact answer, so subtle gradients (photos, color-corrected
-// game screens) still pick the right entry.
-const std::vector<std::uint8_t>& paletteTable() {
-    static const std::vector<std::uint8_t> table = [] {
-        std::vector<std::uint8_t> t(1 << 18);
-        Rgb palette[240];
-        for (int i = 0; i < 240; ++i) palette[i] = paletteColor(16 + i);
-        for (int c = 0; c < (1 << 18); ++c) {
-            int r = c & 63, g = (c >> 6) & 63, b = (c >> 12) & 63;
-            Rgb color = rgb(static_cast<std::uint8_t>((r << 2) | (r >> 4)),
-                            static_cast<std::uint8_t>((g << 2) | (g >> 4)),
-                            static_cast<std::uint8_t>((b << 2) | (b >> 4)));
-            int best = 0;
-            long bestDistance = -1;
-            for (int i = 0; i < 240; ++i) {
-                long d = colorDistance(color, palette[i]);
-                if (bestDistance < 0 || d < bestDistance) {
-                    bestDistance = d;
-                    best = i;
+// Nearest-palette lookup that is exact but almost as fast as a table.
+//
+// Colors are grouped in 64 x 64 x 64 bins (6 bits per channel, each bin
+// spans 4 values per channel).  For every bin we store, sorted, the palette
+// entries that are nearest at any lattice point of the bin AND of its
+// neighbors (a 4 x 4 x 4 lattice around it), in one shared list.  The
+// regions where each entry is nearest are wider than that neighborhood, so
+// the candidates contain the exact answer (a brute-force test over millions
+// of colors finds no difference with a full search).
+// Most bins have a single candidate (returned directly); for the few that
+// straddle a boundary, the candidates are compared on the real color.
+//
+// Built once, on first use (C++11 guarantees a thread-safe one-time
+// initialization of function-local statics): about 0.2 s, ~2 MB.
+struct PaletteTable {
+    // Bin b's candidates are list[first[b]] .. list[first[b] + count[b] - 1]
+    // (palette index - 16, ascending).
+    std::vector<std::uint32_t> first;
+    std::vector<std::uint8_t> count;
+    std::vector<std::uint8_t> list;
+};
+
+int nearestBySearch(const Rgb& color, const Rgb* palette) {
+    int best = 0;
+    long bestDistance = -1;
+    for (int i = 0; i < 240; ++i) {
+        long d = colorDistance(color, palette[i]);
+        if (bestDistance < 0 || d < bestDistance) {  // ties: lowest index wins
+            bestDistance = d;
+            best = i;
+        }
+    }
+    return best;
+}
+
+const Rgb* paletteColors() {
+    static const std::vector<Rgb> colors = [] {
+        std::vector<Rgb> c(240);
+        for (int i = 0; i < 240; ++i) c[static_cast<size_t>(i)] = paletteColor(16 + i);
+        return c;
+    }();
+    return &colors[0];
+}
+
+const PaletteTable& paletteTable() {
+    static const PaletteTable table = [] {
+        const Rgb* palette = paletteColors();
+        // Nearest entry at every lattice point 0, 4, 8, ..., 252, 255 (65 per axis).
+        const int n = 65;
+        std::vector<std::uint8_t> lattice(static_cast<size_t>(n * n * n));
+        for (int b = 0; b < n; ++b) {
+            for (int g = 0; g < n; ++g) {
+                for (int r = 0; r < n; ++r) {
+                    Rgb c = rgb(static_cast<std::uint8_t>(std::min(255, r * 4)),
+                                static_cast<std::uint8_t>(std::min(255, g * 4)),
+                                static_cast<std::uint8_t>(std::min(255, b * 4)));
+                    lattice[static_cast<size_t>((b * n + g) * n + r)] =
+                        static_cast<std::uint8_t>(nearestBySearch(c, palette));
                 }
             }
-            t[static_cast<size_t>(c)] = static_cast<std::uint8_t>(16 + best);
+        }
+        PaletteTable t;
+        t.first.assign(1 << 18, 0);
+        t.count.assign(1 << 18, 0);
+        t.list.reserve(1 << 19);
+        for (int b = 0; b < 64; ++b) {
+            for (int g = 0; g < 64; ++g) {
+                for (int r = 0; r < 64; ++r) {
+                    std::uint8_t found[64];
+                    int count = 0;
+                    for (int db = -1; db <= 2; ++db) {
+                        for (int dg = -1; dg <= 2; ++dg) {
+                            for (int dr = -1; dr <= 2; ++dr) {
+                                int cr = std::max(0, std::min(n - 1, r + dr));
+                                int cg = std::max(0, std::min(n - 1, g + dg));
+                                int cb = std::max(0, std::min(n - 1, b + db));
+                                std::uint8_t v = lattice[static_cast<size_t>((cb * n + cg) * n + cr)];
+                                bool seen = false;
+                                for (int i = 0; i < count; ++i) seen = seen || found[i] == v;
+                                if (!seen) found[count++] = v;
+                            }
+                        }
+                    }
+                    std::sort(found, found + count);
+                    size_t bin = static_cast<size_t>(r | (g << 6) | (b << 12));
+                    t.first[bin] = static_cast<std::uint32_t>(t.list.size());
+                    t.count[bin] = static_cast<std::uint8_t>(count);
+                    t.list.insert(t.list.end(), found, found + count);
+                }
+            }
         }
         return t;
     }();
@@ -373,8 +438,24 @@ Rgb paletteColor(int index) {
 }
 
 int nearestPaletteIndex(Rgb c) {
-    int key = (c.r >> 2) | ((c.g >> 2) << 6) | ((c.b >> 2) << 12);
-    return paletteTable()[static_cast<size_t>(key)];
+    const PaletteTable& t = paletteTable();
+    size_t bin = static_cast<size_t>((c.r >> 2) | ((c.g >> 2) << 6) | ((c.b >> 2) << 12));
+    const std::uint8_t* candidates = &t.list[t.first[bin]];
+    int count = t.count[bin];
+    int best = candidates[0];
+    if (count == 1) return 16 + best;  // the usual case: one candidate
+    // Bin on a boundary: compare the candidates on the real color (in index
+    // order, strict "<", so ties pick the lowest index like a full search).
+    const Rgb* palette = paletteColors();
+    long bestDistance = colorDistance(c, palette[best]);
+    for (int k = 1; k < count; ++k) {
+        long d = colorDistance(c, palette[candidates[k]]);
+        if (d < bestDistance) {
+            bestDistance = d;
+            best = candidates[k];
+        }
+    }
+    return 16 + best;
 }
 
 int brightness(Rgb c) { return (299 * c.r + 587 * c.g + 114 * c.b) / 1000; }
