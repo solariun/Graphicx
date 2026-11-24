@@ -52,6 +52,7 @@ void usage() {
         "      --nearest       crisp resizing for pixel art (default: smooth)\n"
         "      --invert        ASCII styles: for light terminal backgrounds\n"
         "      --contrast P    contrast change in percent, e.g. 10%% or -10%%\n"
+        "      --brightness P  brightness change in percent, e.g. 10%% or -10%%\n"
         "      --ramp CHARS    ASCII styles: characters from empty to dense\n"
         "  -o, --output FILE   write to FILE instead of the terminal\n"
         "  -h, --help\n"
@@ -92,6 +93,11 @@ int main(int argc, char** argv) {
         } else if (a == "--contrast" && hasValue) {
             if (!gfx::parsePercent(argv[++i], options.contrast)) {
                 std::fprintf(stderr, "error: --contrast takes a percentage, e.g. 10%% or -10%%\n");
+                return 2;
+            }
+        } else if (a == "--brightness" && hasValue) {
+            if (!gfx::parsePercent(argv[++i], options.brightness)) {
+                std::fprintf(stderr, "error: --brightness takes a percentage, e.g. 10%% or -10%%\n");
                 return 2;
             }
         } else if (a == "--ramp" && hasValue) {

@@ -258,6 +258,10 @@ Cell shadeCell(Rgb top, Rgb bottom, const Options& o) {
         top = adjustContrast(top, o.contrast);
         bottom = adjustContrast(bottom, o.contrast);
     }
+    if (o.brightness != 0) {
+        top = adjustBrightness(top, o.brightness);
+        bottom = adjustBrightness(bottom, o.brightness);
+    }
     Cell cell;
     if (o.style == Style::Blocks) {
         cell.fg = colorKey(top, o.colorMode);
@@ -378,7 +382,8 @@ Options::Options()
       rows(0),
       ramp(" .:-=+*#%@"),
       invert(false),
-      contrast(0) {}
+      contrast(0),
+      brightness(0) {}
 
 const char* styleName(Style style) {
     switch (style) {
@@ -399,6 +404,16 @@ bool parseStyle(const std::string& name, Style& style) {
         return false;
     }
     return true;
+}
+
+Rgb adjustBrightness(Rgb c, double brightness) {
+    double shift = brightness * 255.0;
+    int v[3] = {c.r, c.g, c.b};
+    for (int i = 0; i < 3; ++i) {
+        double x = v[i] + shift + 0.5;
+        v[i] = x < 0 ? 0 : (x > 255 ? 255 : static_cast<int>(x));
+    }
+    return rgb(static_cast<std::uint8_t>(v[0]), static_cast<std::uint8_t>(v[1]), static_cast<std::uint8_t>(v[2]));
 }
 
 bool parsePercent(const std::string& text, double& fraction) {

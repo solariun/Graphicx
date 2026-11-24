@@ -190,6 +190,26 @@ void testContrast() {
     CHECK(r[0] != '@' && r[0] != ' ');
 }
 
+void testBrightness() {
+    gfx::Rgb c = gfx::rgb(100, 150, 200);
+    gfx::Rgb same = gfx::adjustBrightness(c, 0);
+    CHECK(same.r == 100 && same.g == 150 && same.b == 200);
+    gfx::Rgb up = gfx::adjustBrightness(c, 0.10);    // +25.5
+    CHECK(up.r == 126 && up.g == 176 && up.b == 226);
+    gfx::Rgb down = gfx::adjustBrightness(c, -0.10);
+    CHECK(down.r == 75 && down.g == 125 && down.b == 175);
+    gfx::Rgb white = gfx::adjustBrightness(c, 1.0);
+    CHECK(white.r == 255 && white.g == 255 && white.b == 255);
+    gfx::Rgb black = gfx::adjustBrightness(c, -1.0);
+    CHECK(black.r == 0 && black.g == 0 && black.b == 0);
+    gfx::Options o;
+    o.style = gfx::Style::Ascii;
+    o.brightness = -1.0;  // everything black -> the emptiest ramp character
+    CHECK(gfx::render(solid(2, 2, gfx::rgb(255, 255, 255)), o) == "  \n");
+    o.brightness = 1.0;   // everything white -> the densest
+    CHECK(gfx::render(solid(2, 2, gfx::rgb(0, 0, 0)), o) == "@@\n");
+}
+
 void testPercent() {
     double f = 0;
     CHECK(gfx::parsePercent("10%", f) && f > 0.0999 && f < 0.1001);
@@ -237,6 +257,7 @@ int main() {
     testSizing();
     testRender();
     testContrast();
+    testBrightness();
     testPercent();
     testScreen();
     std::printf("%d checks, %d failures\n", checks, failures);

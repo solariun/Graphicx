@@ -181,13 +181,20 @@ struct Options {
     // becomes (value - 128) * (1 + contrast) + 128, clamped to 0..255.
     // Applies to every style (colors and ASCII brightness).
     double contrast;
+
+    // Brightness change as a fraction: 0 = unchanged (default), 0.10 = +10%
+    // (lighter), -0.10 = -10% (darker), 1 = white, -1 = black.  Each channel
+    // becomes value + brightness * 255, clamped to 0..255.  Applied after
+    // the contrast change, to every style.
+    double brightness;
 };
 
 // Name of a style for messages and command lines: "blocks", "ascii-color",
 // "ascii"; parseStyle() accepts those names (returns false otherwise).
 const char* styleName(Style style);
 bool parseStyle(const std::string& name, Style& style);
-// "10%", "+10%", "-10%", "10" -> 0.10 / -0.10 (for Options::contrast).
+// "10%", "+10%", "-10%", "10" -> 0.10 / -0.10 (for Options::contrast and
+// Options::brightness).
 // False if the text is not a number.
 bool parsePercent(const std::string& text, double& fraction);
 
@@ -285,6 +292,9 @@ int nearestPaletteIndex(Rgb color);
 int brightness(Rgb color);
 // A color with the contrast changed by `contrast` (see Options::contrast).
 Rgb adjustContrast(Rgb color, double contrast);
+// A color with the brightness changed by `brightness` (see
+// Options::brightness).
+Rgb adjustBrightness(Rgb color, double brightness);
 
 }  // namespace gfx
 

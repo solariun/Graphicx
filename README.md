@@ -118,6 +118,7 @@ gfx::Image d = gfx::loadImage("file.png");             // image_io.h; throws gfx
 | `ramp` | `" .:-=+*#%@"` | ASCII characters, emptiest first |
 | `invert` | `false` | ASCII for light terminal backgrounds |
 | `contrast` | `0` | contrast change: `0.10` = +10%, `-0.10` = -10%, `-1` = flat gray (every style) |
+| `brightness` | `0` | brightness change: `0.10` = +10%, `-0.10` = -10%, `1` = white, `-1` = black (applied after contrast) |
 
 Helpers:
 - `gfx::fit(w, h, maxColumns, maxRows, columns, rows)`: the largest size
@@ -204,6 +205,7 @@ gfx-convert [options] IMAGE
       --nearest       crisp resizing for pixel art
       --invert        ASCII styles on light backgrounds
       --contrast P    contrast change, e.g. 10% or -10%
+      --brightness P  brightness change, e.g. 10% or -10%
       --ramp CHARS    ASCII characters from empty to dense
   -o, --output FILE   save instead of printing
 ```
@@ -216,6 +218,7 @@ gfx-play [options] VIDEO
       --truecolor    24-bit colors
       --invert       ASCII styles on light backgrounds
       --contrast P   contrast change, e.g. 10% or -10%
+      --brightness P brightness change, e.g. 10% or -10%
       --loop         start again at the end
       --ffmpeg PATH / --ffprobe PATH   programs to use (default: from the PATH)
 keys: space = pause / resume, q or Esc = quit
