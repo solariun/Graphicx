@@ -234,6 +234,7 @@ void usage() {
         "  -s, --style S      blocks (default) | ascii-color | ascii\n"
         "      --truecolor    24-bit colors instead of the 256-color palette\n"
         "      --invert       ASCII styles: for light terminal backgrounds\n"
+        "      --contrast P   contrast change in percent, e.g. 10%% or -10%%\n"
         "      --loop         start again at the end\n"
         "      --ffmpeg PATH  ffmpeg program (default: ffmpeg from the PATH)\n"
         "      --ffprobe PATH ffprobe program (default: ffprobe from the PATH)\n"
@@ -270,6 +271,11 @@ int main(int argc, char** argv) {
             options.colorMode = gfx::ColorMode::TrueColor;
         } else if (a == "--invert") {
             options.invert = true;
+        } else if (a == "--contrast" && hasValue) {
+            if (!gfx::parsePercent(argv[++i], options.contrast)) {
+                std::fprintf(stderr, "error: --contrast takes a percentage, e.g. 10%% or -10%%\n");
+                return 2;
+            }
         } else if (a == "--loop") {
             loop = true;
         } else if (a == "--ffmpeg" && hasValue) {

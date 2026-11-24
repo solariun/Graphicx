@@ -117,6 +117,7 @@ gfx::Image d = gfx::loadImage("file.png");             // image_io.h; throws gfx
 | `columns`, `rows` | `0`, `0` | size in characters. Both 0: 1 column per pixel. One set: the other follows the aspect ratio. Both set: exact size |
 | `ramp` | `" .:-=+*#%@"` | ASCII characters, emptiest first |
 | `invert` | `false` | ASCII for light terminal backgrounds |
+| `contrast` | `0` | contrast change: `0.10` = +10%, `-0.10` = -10%, `-1` = flat gray (every style) |
 
 Helpers:
 - `gfx::fit(w, h, maxColumns, maxRows, columns, rows)`: the largest size
@@ -202,6 +203,7 @@ gfx-convert [options] IMAGE
       --truecolor     24-bit colors
       --nearest       crisp resizing for pixel art
       --invert        ASCII styles on light backgrounds
+      --contrast P    contrast change, e.g. 10% or -10%
       --ramp CHARS    ASCII characters from empty to dense
   -o, --output FILE   save instead of printing
 ```
@@ -213,6 +215,7 @@ gfx-play [options] VIDEO
   -s, --style S      blocks (default) | ascii-color | ascii
       --truecolor    24-bit colors
       --invert       ASCII styles on light backgrounds
+      --contrast P   contrast change, e.g. 10% or -10%
       --loop         start again at the end
       --ffmpeg PATH / --ffprobe PATH   programs to use (default: from the PATH)
 keys: space = pause / resume, q or Esc = quit

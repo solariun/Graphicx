@@ -175,12 +175,21 @@ struct Options {
     std::string ramp;     // default " .:-=+*#%@"
     // ASCII styles: true for light terminal backgrounds (bright = empty).
     bool invert;          // default false
+
+    // Contrast change as a fraction: 0 = unchanged (default), 0.10 = +10%
+    // (stronger), -0.10 = -10% (flatter), -1 = flat gray.  Each channel
+    // becomes (value - 128) * (1 + contrast) + 128, clamped to 0..255.
+    // Applies to every style (colors and ASCII brightness).
+    double contrast;
 };
 
 // Name of a style for messages and command lines: "blocks", "ascii-color",
 // "ascii"; parseStyle() accepts those names (returns false otherwise).
 const char* styleName(Style style);
 bool parseStyle(const std::string& name, Style& style);
+// "10%", "+10%", "-10%", "10" -> 0.10 / -0.10 (for Options::contrast).
+// False if the text is not a number.
+bool parsePercent(const std::string& text, double& fraction);
 
 // ------------------------------------------------------------------ render --
 
@@ -274,6 +283,8 @@ Rgb paletteColor(int index);
 int nearestPaletteIndex(Rgb color);
 // Perceived brightness of a color, 0-255 (Rec. 601 luma).
 int brightness(Rgb color);
+// A color with the contrast changed by `contrast` (see Options::contrast).
+Rgb adjustContrast(Rgb color, double contrast);
 
 }  // namespace gfx
 

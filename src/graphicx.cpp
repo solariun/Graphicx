@@ -44,6 +44,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 namespace gfx {
 
@@ -253,6 +254,10 @@ struct Cell {
 };
 
 Cell shadeCell(Rgb top, Rgb bottom, const Options& o) {
+    if (o.contrast != 0) {
+        top = adjustContrast(top, o.contrast);
+        bottom = adjustContrast(bottom, o.contrast);
+    }
     Cell cell;
     if (o.style == Style::Blocks) {
         cell.fg = colorKey(top, o.colorMode);
@@ -372,7 +377,8 @@ Options::Options()
       columns(0),
       rows(0),
       ramp(" .:-=+*#%@"),
-      invert(false) {}
+      invert(false),
+      contrast(0) {}
 
 const char* styleName(Style style) {
     switch (style) {
@@ -392,6 +398,17 @@ bool parseStyle(const std::string& name, Style& style) {
     } else {
         return false;
     }
+    return true;
+}
+
+bool parsePercent(const std::string& text, double& fraction) {
+    std::string t = text;
+    if (!t.empty() && t[t.size() - 1] == '%') t.erase(t.size() - 1);
+    if (t.empty()) return false;
+    char* end = 0;
+    double v = std::strtod(t.c_str(), &end);
+    if (!end || *end != '\0') return false;
+    fraction = v / 100.0;
     return true;
 }
 
@@ -459,6 +476,17 @@ int nearestPaletteIndex(Rgb c) {
 }
 
 int brightness(Rgb c) { return (299 * c.r + 587 * c.g + 114 * c.b) / 1000; }
+
+Rgb adjustContrast(Rgb c, double contrast) {
+    double gain = 1.0 + contrast;
+    if (gain < 0) gain = 0;
+    int v[3] = {c.r, c.g, c.b};
+    for (int i = 0; i < 3; ++i) {
+        double x = (v[i] - 128) * gain + 128.5;
+        v[i] = x < 0 ? 0 : (x > 255 ? 255 : static_cast<int>(x));
+    }
+    return rgb(static_cast<std::uint8_t>(v[0]), static_cast<std::uint8_t>(v[1]), static_cast<std::uint8_t>(v[2]));
+}
 
 // ------------------------------------------------------------------ render --
 

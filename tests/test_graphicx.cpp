@@ -174,6 +174,31 @@ void testRender() {
     CHECK(gfx::render(stripes, box) == " \n");  // rows 0 and 2: black
 }
 
+void testContrast() {
+    gfx::Rgb gray = gfx::rgb(100, 150, 128);
+    gfx::Rgb same = gfx::adjustContrast(gray, 0);
+    CHECK(same.r == 100 && same.g == 150 && same.b == 128);
+    gfx::Rgb more = gfx::adjustContrast(gray, 0.5);  // (100-128)*1.5+128 = 86, (150-128)*1.5+128 = 161
+    CHECK(more.r == 86 && more.g == 161 && more.b == 128);
+    gfx::Rgb flat = gfx::adjustContrast(gfx::rgb(0, 255, 30), -1.0);
+    CHECK(flat.r == 128 && flat.g == 128 && flat.b == 128);
+    CHECK(gfx::adjustContrast(gfx::rgb(250, 5, 128), 1.0).r == 255);  // clamped
+    gfx::Options o;
+    o.style = gfx::Style::Ascii;
+    o.contrast = -1.0;  // everything becomes mid gray -> the middle ramp character
+    std::string r = gfx::render(solid(2, 2, gfx::rgb(255, 255, 255)), o);
+    CHECK(r[0] != '@' && r[0] != ' ');
+}
+
+void testPercent() {
+    double f = 0;
+    CHECK(gfx::parsePercent("10%", f) && f > 0.0999 && f < 0.1001);
+    CHECK(gfx::parsePercent("-10%", f) && f < -0.0999 && f > -0.1001);
+    CHECK(gfx::parsePercent("+25", f) && f > 0.2499 && f < 0.2501);
+    CHECK(!gfx::parsePercent("abc", f));
+    CHECK(!gfx::parsePercent("%", f));
+}
+
 void testScreen() {
     gfx::Options o;
     o.style = gfx::Style::Ascii;
@@ -211,6 +236,8 @@ int main() {
     testImage();
     testSizing();
     testRender();
+    testContrast();
+    testPercent();
     testScreen();
     std::printf("%d checks, %d failures\n", checks, failures);
     return failures ? 1 : 0;

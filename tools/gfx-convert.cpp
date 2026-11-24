@@ -51,6 +51,7 @@ void usage() {
         "      --truecolor     24-bit colors instead of the 256-color palette\n"
         "      --nearest       crisp resizing for pixel art (default: smooth)\n"
         "      --invert        ASCII styles: for light terminal backgrounds\n"
+        "      --contrast P    contrast change in percent, e.g. 10%% or -10%%\n"
         "      --ramp CHARS    ASCII styles: characters from empty to dense\n"
         "  -o, --output FILE   write to FILE instead of the terminal\n"
         "  -h, --help\n"
@@ -88,6 +89,11 @@ int main(int argc, char** argv) {
             options.filter = gfx::Filter::Nearest;
         } else if (a == "--invert") {
             options.invert = true;
+        } else if (a == "--contrast" && hasValue) {
+            if (!gfx::parsePercent(argv[++i], options.contrast)) {
+                std::fprintf(stderr, "error: --contrast takes a percentage, e.g. 10%% or -10%%\n");
+                return 2;
+            }
         } else if (a == "--ramp" && hasValue) {
             options.ramp = argv[++i];
         } else if ((a == "-o" || a == "--output") && hasValue) {
