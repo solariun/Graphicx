@@ -272,3 +272,9 @@ third_party/stb_image.h       image decoder (public domain / MIT, by Sean Barret
 `third_party/stb_image.h` (v2.34) is by Sean Barrett,
 https://github.com/nothings/stb. It's dual-licensed as public domain or MIT;
 see the end of the file.
+
+## License
+
+Graphicx is released under the [MIT License](LICENSE): use it in any
+project, open or closed source, as long as the copyright and license notice
+stay with it. The bundled stb_image is public domain or MIT (your choice).
