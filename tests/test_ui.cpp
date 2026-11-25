@@ -19,6 +19,8 @@
 #include <string>
 
 #include "graphicx/canvas.h"
+#include "graphicx/image_io.h"
+#include "graphicx/png.h"
 #include "graphicx/color.h"
 #include "graphicx/terminal.h"
 #include "graphicx/ui.h"
@@ -472,9 +474,51 @@ void testWidgets() {
     CHECK(bw == 8 && bh == 3);  // 3x5 font in quadrants: 15+1 px wide, 5+1 high
 }
 
+bool sameImage(const gfx::Image& a, const gfx::Image& b) {
+    if (a.width() != b.width() || a.height() != b.height()) return false;
+    for (int y = 0; y < a.height(); ++y)
+        for (int x = 0; x < a.width(); ++x)
+            if (a.get(x, y) != b.get(x, y)) return false;
+    return true;
+}
+
+void testPng() {
+    // Colour noise (incompressible), a gradient (compressible), a grey image.
+    gfx::Image noise(37, 23);
+    unsigned seed = 12345;
+    for (int y = 0; y < noise.height(); ++y)
+        for (int x = 0; x < noise.width(); ++x) {
+            seed = seed * 1103515245u + 12345u;
+            noise.set(x, y, gfx::rgb(static_cast<std::uint8_t>(seed >> 16), static_cast<std::uint8_t>(seed >> 8), static_cast<std::uint8_t>(seed >> 24)));
+        }
+    gfx::Image grad(300, 200);
+    gfx::Canvas(grad).gradient(rect(0, 0, 300, 200), gfx::Colormap::Turbo);
+    gfx::Image grey(180, 90);
+    for (int y = 0; y < 90; ++y)
+        for (int x = 0; x < 180; ++x) {
+            std::uint8_t v = static_cast<std::uint8_t>((x * 7 + y * 3) & 0xFF);
+            grey.set(x, y, gfx::rgb(v, v, v));
+        }
+    const gfx::Image* images[3] = {&noise, &grad, &grey};
+    for (int i = 0; i < 3; ++i) {
+        std::string png = gfx::encodePng(*images[i]);
+        CHECK(png.size() > 8 && png.compare(1, 3, "PNG") == 0);
+        gfx::Image back = gfx::loadImageFromMemory(png.data(), png.size());
+        CHECK(sameImage(back, *images[i]));
+    }
+    std::string g = gfx::encodePng(grad);
+    CHECK(g.size() < static_cast<size_t>(300 * 200 * 3) / 10);  // gradient compresses well
+    std::string gr = gfx::encodePng(grey);
+    CHECK(gr[25] == 0);  // colour type 0: written as greyscale
+    CHECK(gfx::encodePng(gfx::Image()).empty());
+    std::string error;
+    CHECK(!gfx::savePng("/nonexistent-dir/x.png", grad, error) && !error.empty());
+}
+
 }  // namespace
 
 int main() {
+    testPng();
     testColor();
     testCanvasShapes();
     testCanvasText();

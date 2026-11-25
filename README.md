@@ -232,7 +232,9 @@ c.scroll(gfx::rect(0, 0, 160, 96), 0, 1, gfx::hex(0));               // waterfal
 std::cout << gfx::render(img);
 ```
 
-Everything is clipped to the image and to `setClip()`. Colors:
+Everything is clipped to the image and to `setClip()`. Save any `Image` as PNG with
+`gfx::savePng(path, image, error)` (`graphicx/png.h`: its own deflate, no zlib; grey
+images are written as greyscale). Colors:
 `gfx::hex`, `gfx::hsv`, `gfx::lerp`, `gfx::blend`, `gfx::scale`;
 `gfx::colormap(map, t)` for `Classic`, `Turbo`, `Inferno`, `Viridis`, `Ice`,
 `Grey`, `Amber`, `Green`, `Hot`; `gfx::theme(name)` for the interface themes
@@ -387,6 +389,7 @@ include/graphicx/image_io.h   loadImage (stb_image)
 include/graphicx/terminal.h   size, full-screen Session, keys, mouse, events
 include/graphicx/color.h      colors, colormaps, themes
 include/graphicx/canvas.h     pixel drawing (shapes, lines, fonts, images)
+include/graphicx/png.h        PNG writer (own deflate)
 include/graphicx/ui.h         cell surface, painter, braille dots, display, layout
 include/graphicx/widgets.h    App and widgets
 src/                          implementations (font_data.h: the bitmap fonts)

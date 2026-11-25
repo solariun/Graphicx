@@ -14,7 +14,7 @@ CXXFLAGS ?= -O2
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wpedantic -MMD -MP -Iinclude -isystem third_party
 
 LIB      := build/libgraphicx.a
-LIB_SRCS := src/graphicx.cpp src/image_io.cpp src/terminal.cpp src/color.cpp src/canvas.cpp src/ui.cpp src/widgets.cpp
+LIB_SRCS := src/graphicx.cpp src/image_io.cpp src/terminal.cpp src/color.cpp src/canvas.cpp src/ui.cpp src/widgets.cpp src/png.cpp
 LIB_OBJS := $(LIB_SRCS:src/%.cpp=build/%.o)
 
 TOOLS    := bin/gfx-convert bin/gfx-play
