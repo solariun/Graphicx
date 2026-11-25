@@ -14,12 +14,12 @@ CXXFLAGS ?= -O2
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wpedantic -MMD -MP -Iinclude -isystem third_party
 
 LIB      := build/libgraphicx.a
-LIB_SRCS := src/graphicx.cpp src/image_io.cpp src/terminal.cpp
+LIB_SRCS := src/graphicx.cpp src/image_io.cpp src/terminal.cpp src/color.cpp src/canvas.cpp src/ui.cpp src/widgets.cpp
 LIB_OBJS := $(LIB_SRCS:src/%.cpp=build/%.o)
 
 TOOLS    := bin/gfx-convert bin/gfx-play
-EXAMPLES := bin/example-hello bin/example-show-image bin/example-animation
-TESTS    := bin/test-graphicx
+EXAMPLES := bin/example-hello bin/example-show-image bin/example-animation bin/example-canvas bin/example-dashboard
+TESTS    := bin/test-graphicx bin/test-ui
 
 .PHONY: all lib tools examples test clean
 
@@ -51,8 +51,13 @@ bin/test-graphicx: tests/test_graphicx.cpp $(LIB)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@
 
+bin/test-ui: tests/test_ui.cpp $(LIB)
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@
+
 test: $(TESTS)
 	./bin/test-graphicx
+	./bin/test-ui
 
 clean:
 	rm -rf build bin

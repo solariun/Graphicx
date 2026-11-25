@@ -1,7 +1,15 @@
 # Graphicx
 
-Draw pictures, animations and video in a text terminal, in C++11, with no
-dependencies.
+Draw pictures, animations, video **and complete user interfaces** in a text
+terminal, in C++11, with no dependencies.
+
+Graphicx has three layers; use only the ones you need:
+
+| Layer | Header | What it gives you |
+|-------|--------|-------------------|
+| Pictures | `graphicx.h` | any `gfx::Image` as terminal text (half blocks, ASCII, colored ASCII), `gfx::Screen` for 60 fps video with only the changed cells sent |
+| Drawing | `canvas.h`, `color.h` | a pixel canvas: lines (anti-aliased, thick, dashed), rectangles, rounded rectangles, circles, ellipses, arcs, pies, polygons, gradients, images, two bitmap fonts; colors, colormaps (Turbo, Inferno, Viridis ...) and themes |
+| Interfaces | `ui.h`, `widgets.h` | a cell surface with boxes, text and pictures in half blocks, quadrants or braille; a diff renderer; an `App` with focus, mouse and keys; ~25 widgets: buttons, sliders, radio groups, text inputs, lists, tables, tabs, menus, dialogs, meters, sparklines, bar charts, plots, waterfalls, big text |
 
 ```
 ********************++++++++++++++++++++++++====================
@@ -189,6 +197,124 @@ if (gfx::terminal::Session::resized()) { /* the terminal changed size */ }
 
 The terminal is restored when the `Session` object goes away.
 
+Full input for interactive programs: keys with modifiers, function keys,
+Unicode, and the mouse.
+
+```cpp
+session.enableMouse(true);                 // clicks, drags, wheel (SGR 1006)
+gfx::terminal::Event e;
+if (session.readEvent(e, 16)) {
+    if (e.type == gfx::terminal::EventType::Key && e.key == gfx::terminal::KeyF5) { ... }
+    if (e.type == gfx::terminal::EventType::Mouse && e.button == gfx::terminal::MouseButton::Left)
+        click(e.x, e.y);                    // 0-based cell
+    if (e.type == gfx::terminal::EventType::Resize) relayout();
+}
+```
+
+`gfx::terminal::parseEvent(bytes, event)` parses raw input yourself (it is what
+`readEvent` uses).
+
+### Drawing: `graphicx/canvas.h` and `graphicx/color.h`
+
+```cpp
+gfx::Image img(160, 96);
+gfx::Canvas c(img);
+c.clear(gfx::hex(0x101018));
+c.fillCircle(40, 48, 30, gfx::hex(0xffb000));
+c.lineAA(0, 95, 159, 0, gfx::hex(0x40d0ff));          // anti-aliased
+c.thickLine(10, 10, 150, 20, 3, gfx::hex(0xffffff));
+c.fillRoundRect(gfx::rect(90, 40, 60, 30), 6, gfx::hex(0x3080ff));
+c.pie(120, 60, 20, 0, 270, gfx::hex(0xff4060));        // degrees, counter-clockwise
+c.fillPolygon(points, gfx::hex(0x40e080));             // even-odd rule
+c.gradient(gfx::rect(0, 90, 160, 6), gfx::Colormap::Turbo);
+c.text(4, 4, "HELLO", gfx::hex(0xffffff), gfx::Font::Font5x7, 2);   // scale 2
+c.scroll(gfx::rect(0, 0, 160, 96), 0, 1, gfx::hex(0));               // waterfalls
+std::cout << gfx::render(img);
+```
+
+Everything is clipped to the image and to `setClip()`. Colors:
+`gfx::hex`, `gfx::hsv`, `gfx::lerp`, `gfx::blend`, `gfx::scale`;
+`gfx::colormap(map, t)` for `Classic`, `Turbo`, `Inferno`, `Viridis`, `Ice`,
+`Grey`, `Amber`, `Green`, `Hot`; `gfx::theme(name)` for the interface themes
+`amber`, `orange`, `lime`, `green`, `cyan`, `vfd`, `blue`, `violet`, `rose`,
+`mono`, `light`.
+
+### Interfaces: `graphicx/ui.h`
+
+The cell layer. A `Surface` is what the screen should show; a `Painter`
+draws on part of it (clipped, local coordinates); a `Display` sends only the
+cells that changed.
+
+```cpp
+gfx::ui::Surface surface(80, 24);
+gfx::ui::Painter p(surface);
+p.fill(gfx::hex(0x101010));
+p.box(gfx::rect(0, 0, 80, 24), gfx::hex(0xffb000), gfx::ui::Border::Rounded, " Title ");
+p.text(2, 2, "Bold text", gfx::hex(0xffffff), gfx::ui::Bold);
+p.bar(gfx::rect(2, 4, 30, 1), 0.65, gfx::hex(0x40d060), gfx::hex(0x202020));  // 1/8-cell steps
+p.image(gfx::rect(2, 6, 40, 12), img, gfx::ui::PixelMode::Braille);
+gfx::ui::Display display;          // truecolor; Palette256 for older terminals
+std::string out;
+display.render(surface, out);      // only what changed since the last call
+session.write(out);
+```
+
+| `PixelMode` | Pixels per cell | Best for |
+|-------------|-----------------|----------|
+| `HalfBlocks` | 1 x 2, two exact colors | photos, video, waterfalls |
+| `Quadrants` | 2 x 2, two colors | sharper shapes, big text |
+| `Braille` | 2 x 4, two colors | line art, plots, fine detail |
+| `Ascii` | 1 x 2, one color | retro look |
+
+`DotCanvas` plots braille dots directly (2x4 per cell, drawn over the
+background that is there): the basis of the charts. Layout helpers split a
+rectangle into rows or columns: `splitRows(r, {fixed(3), flex(), percent(25)}, gap)`.
+
+### Widgets: `graphicx/widgets.h`
+
+```cpp
+gfx::terminal::Session session;
+session.enableMouse(true);
+gfx::ui::App app(gfx::theme("amber"));
+
+gfx::ui::Slider volume("Volume", 0, 100, 50);
+gfx::ui::Button quit("Quit");
+quit.onPress = [&]() { app.quit(); };
+app.add(volume);
+app.add(quit);
+app.bindKey('q', [&]() { app.quit(); });
+app.onLayout = [&](const gfx::Rect& screen) {      // called on every resize
+    volume.bounds = gfx::rect(2, 2, screen.width - 4, 1);
+    quit.bounds = gfx::rect(2, 4, 10, 1);
+};
+app.run(session, 30, [&]() { /* update values before each frame */ });
+```
+
+The `App` keeps the focus (Tab / Shift+Tab, or a click), sends keys to the
+focused widget and then to `bindKey` bindings, sends mouse events to the
+widget under the pointer (drags and the release go to the widget that got
+the press), and draws popups (`openPopup`, for menus and modal dialogs) on
+top. Programs with their own loop call `app.dispatch(event)` and
+`app.frame(out)`.
+
+| Widget | What it is |
+|--------|------------|
+| `Label`, `Panel`, `Separator`, `StatusBar` | text, titled frames, lines, a status row with left / right segments |
+| `Led`, `Spinner`, `ProgressBar` | on/off light, activity spinner, smooth progress bar |
+| `Meter` | level meter with zones, peak hold and a scale (S-meters, VU) |
+| `Sparkline`, `BarChart` | small history graph, vertical bars with labels |
+| `Plot` | line / area chart in braille with axes, grid, several series, markers and shaded bands; peak-preserving for spectra; `onMouse(x, y, event)` gives the value under the pointer |
+| `Waterfall` | scrolling spectrogram with a colormap, markers, `onMouse(fraction, event)` |
+| `BigText` | large text from the built-in fonts (e.g. a frequency display) |
+| `ImageView` | any `gfx::Image`, aspect kept |
+| `Button`, `Toggle`, `RadioGroup` | push / toggle buttons, check boxes, segmented choices |
+| `Slider`, `TextInput` | value with keys, wheel and drag; one-line editor with filter and cursor |
+| `ListBox`, `Table`, `Tabs` | scrolling lists and tables with selection, tab bar |
+| `Menu`, `Dialog` | popup menu with shortcuts and check marks, modal message box |
+
+Every widget takes its colors from the `Theme`, so every theme works
+everywhere, and everything clickable also works from the keyboard.
+
 ---
 
 ## Tools
@@ -244,9 +370,12 @@ keys: space = pause / resume, q or Esc = quit
 | `examples/hello.cpp` | build a picture in memory and print it in all three styles |
 | `examples/show-image.cpp` | load a file and fill the terminal with it |
 | `examples/animation.cpp` | 30 fps full-screen animation with `gfx::Screen`; keys 1/2/3 switch style, q quits |
+| `examples/canvas.cpp` | every canvas primitive, printed in the four pixel modes |
+| `examples/dashboard.cpp` | a full interactive interface with every widget: live spectrum and waterfall, meters, controls, lists, a menu and a dialog; `t` changes the theme |
 
 Build them with `make examples`. They become `bin/example-hello`,
-`bin/example-show-image` and `bin/example-animation`.
+`bin/example-show-image`, `bin/example-animation`, `bin/example-canvas` and
+`bin/example-dashboard`.
 
 ---
 
@@ -255,11 +384,16 @@ Build them with `make examples`. They become `bin/example-hello`,
 ```
 include/graphicx/graphicx.h   core API (Image, Options, render, Screen, palette)
 include/graphicx/image_io.h   loadImage (stb_image)
-include/graphicx/terminal.h   size, full-screen Session, keys
-src/                          implementations
+include/graphicx/terminal.h   size, full-screen Session, keys, mouse, events
+include/graphicx/color.h      colors, colormaps, themes
+include/graphicx/canvas.h     pixel drawing (shapes, lines, fonts, images)
+include/graphicx/ui.h         cell surface, painter, braille dots, display, layout
+include/graphicx/widgets.h    App and widgets
+src/                          implementations (font_data.h: the bitmap fonts)
 tools/                        gfx-convert, gfx-play
-examples/                     hello, show-image, animation
-tests/test_graphicx.cpp       unit tests (make test)
+examples/                     hello, show-image, animation, canvas, dashboard
+tests/test_graphicx.cpp       unit tests of the picture layer (make test)
+tests/test_ui.cpp             unit tests of drawing, interface, widgets and input
 third_party/stb_image.h       image decoder (public domain / MIT, by Sean Barrett)
 ```
 
@@ -267,8 +401,8 @@ third_party/stb_image.h       image decoder (public domain / MIT, by Sean Barret
 
 - **Code:** C++11 only. Keep `graphicx.h` free of platform code. Every file
   starts with a header explaining what it does and how it fits in.
-- **Tests:** add a `CHECK` in `tests/test_graphicx.cpp` for every behavior
-  you add or fix. `make test` must pass. The tests need no terminal or
+- **Tests:** add a `CHECK` in `tests/test_graphicx.cpp` (pictures) or
+  `tests/test_ui.cpp` (drawing, interface) for every behavior you add or fix. `make test` must pass. The tests need no terminal or
   files.
 - **Speed:** `Screen::draw()` runs once per video frame. Keep it free of
   allocations.

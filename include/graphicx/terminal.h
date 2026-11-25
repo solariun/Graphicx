@@ -67,13 +67,58 @@ bool isTerminal();
 // as their character code, e.g. 'q', ' ').
 enum Key {
     KeyNone = -1,    // timeout: no key
+    KeyTab = 9,
     KeyEnter = 13,
     KeyEscape = 27,
+    KeyBackspace = 127,
     KeyUp = 1000,
     KeyDown,
     KeyLeft,
-    KeyRight
+    KeyRight,
+    // Returned by readEvent() only (readKey() keeps its original set):
+    KeyHome,
+    KeyEnd,
+    KeyPageUp,
+    KeyPageDown,
+    KeyInsert,
+    KeyDelete,
+    KeyBackTab,      // Shift+Tab
+    KeyF1, KeyF2, KeyF3, KeyF4, KeyF5, KeyF6, KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12
 };
+
+// ------------------------------------------------------------------ events --
+// readEvent() reports keys (with modifiers and full Unicode), mouse clicks,
+// drags and the wheel (after enableMouse(true)), and window resizes.
+
+enum class EventType { None, Key, Mouse, Resize };
+enum class MouseButton { None, Left, Middle, Right, WheelUp, WheelDown };
+enum class MouseAction { Press, Release, Drag, Move };
+
+struct Event {
+    Event();
+    EventType type;
+    // Key: a Unicode code point (letters, digits, symbols: 'a', 'A', 0x20AC)
+    // or a Key value (KeyUp, KeyF1, KeyEnter, KeyTab, KeyBackspace ...).
+    // Ctrl+letter arrives as the letter with ctrl = true.
+    int key;
+    bool shift, alt, ctrl;
+    // Mouse: 0-based cell column (x) and row (y).
+    MouseButton button;
+    MouseAction action;
+    int x, y;
+
+    bool isKey(int k) const { return type == EventType::Key && key == k; }
+    bool isChar(int c) const { return type == EventType::Key && key == c && !ctrl && !alt; }
+};
+
+// Parses the first event out of raw terminal input `bytes` (consumed from
+// the front).  Returns false when `bytes` is empty or holds only the start
+// of a sequence (a lone Esc is a complete Escape key).  Session::readEvent
+// uses it; it is public for programs that read input themselves and tests.
+bool parseEvent(std::string& bytes, Event& event);
+
+// Name of a key for help texts and debugging ("F5", "PgUp", "Ctrl+X", "a").
+std::string keyName(const Event& event);
 
 // Full-screen terminal mode for the lifetime of the object (RAII).
 class Session {
@@ -89,6 +134,16 @@ public:
     // returns the next key, or KeyNone.
     int readKey(int timeoutMs);
 
+    // Mouse reporting (clicks, drags, wheel; SGR 1006 mode).  Off by default;
+    // switched off again when the session ends.
+    void enableMouse(bool on);
+    // Waits up to timeoutMs (0 = just check, -1 = forever) for the next
+    // event.  Returns false (event.type None) on timeout.  A pending resize
+    // is reported first, as EventType::Resize.
+    bool readEvent(Event& event, int timeoutMs);
+    // Bracketed paste and focus events are ignored; unknown sequences are
+    // skipped whole.
+
     // Set when the terminal was resized since the last call (clears it).
     static bool resized();
     // Set after Ctrl+C / SIGTERM / SIGHUP.
@@ -100,6 +155,7 @@ private:
 
     bool alternateScreen_;
     bool restoreInput_;
+    bool mouse_;
     std::string pending_;  // input bytes not consumed yet
 };
 
