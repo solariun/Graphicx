@@ -559,6 +559,7 @@ public:
 
 private:
     int tabAt(int x) const;
+    int padding() const;  // 1, or 0 when the padded names do not fit
 };
 
 // Popup menu: open with App::openPopup after setting bounds via place().

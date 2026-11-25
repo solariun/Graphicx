@@ -517,6 +517,33 @@ void testPng() {
 
 }  // namespace
 
+// Tabs: padded names when they fit, compact (no padding) when they do not;
+// the mouse finds the same tab either way.
+void testTabs() {
+    using namespace gfx::ui;
+    const char* names[] = {"Bands", "Memories", "Log", "Heard", "Monitor"};
+    for (int round = 0; round < 2; ++round) {
+        const int width = round == 0 ? 42 : 32;  // padded needs 28 names + 5 * 3 - 1 = 42
+        Tabs tabs;
+        tabs.tabs.assign(names, names + 5);
+        tabs.bounds = rect(0, 0, width, 1);
+        Surface s(width, 1, kBlack);
+        Painter p(s);
+        tabs.draw(p, gfx::theme("amber"), false);
+        if (round == 0) {
+            CHECK(s.at(0, 0).ch == ' ' && s.at(1, 0).ch == 'B');
+            CHECK(s.at(34, 0).ch == 'M' && s.at(40, 0).ch == 'r');  // " Monitor " at 33-41
+        } else {
+            CHECK(s.at(0, 0).ch == 'B');
+            CHECK(s.at(25, 0).ch == 'M' && s.at(31, 0).ch == 'r');  // compact: all five fit
+        }
+        int selected = -1;
+        tabs.onChange = [&selected](int i) { selected = i; };
+        tabs.handle(click(round == 0 ? 38 : 28, 0));
+        CHECK(tabs.selected == 4 && selected == 4);
+    }
+}
+
 int main() {
     testPng();
     testColor();
@@ -531,6 +558,7 @@ int main() {
     testLayout();
     testInputParser();
     testWidgets();
+    testTabs();
     std::printf("%d checks, %d failures\n", checks, failures);
     return failures ? 1 : 0;
 }

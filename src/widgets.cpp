@@ -1174,10 +1174,18 @@ bool Table::handle(const Event& e) {
 
 // -------------------------------------------------------------------- Tabs --
 
+// Tabs pad each name with a space on both sides; when they would not fit the
+// width they drop the padding (compact).
+int Tabs::padding() const {
+    int total = 0;
+    for (size_t i = 0; i < tabs.size(); ++i) total += columns(tabs[i]) + 3;
+    return total - 1 <= bounds.width ? 1 : 0;
+}
+
 int Tabs::tabAt(int x) const {
-    int pos = 0;
+    int pos = 0, pad = padding();
     for (size_t i = 0; i < tabs.size(); ++i) {
-        int w = columns(tabs[i]) + 2;
+        int w = columns(tabs[i]) + 2 * pad;
         if (x >= pos && x < pos + w) return static_cast<int>(i);
         pos += w + 1;
     }
@@ -1186,11 +1194,12 @@ int Tabs::tabAt(int x) const {
 
 void Tabs::draw(Painter& p, const Theme& t, bool focused) {
     int x = 0;
+    const std::string pad(static_cast<size_t>(padding()), ' ');
     for (size_t i = 0; i < tabs.size(); ++i) {
         bool sel = static_cast<int>(i) == selected;
         Rgb fg = sel ? t.accentText : t.text;
         Rgb bg = sel ? (focused ? t.focus : t.accent) : lerp(t.panel, t.text, 0.06);
-        x = p.text(x, 0, " " + tabs[i] + " ", fg, bg, sel ? Bold : Plain);
+        x = p.text(x, 0, pad + tabs[i] + pad, fg, bg, sel ? Bold : Plain);
         x = p.text(x, 0, " ", t.border) ;
     }
     if (p.height() > 1) p.hline(0, 1, p.width(), t.border);

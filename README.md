@@ -311,7 +311,7 @@ top. Programs with their own loop call `app.dispatch(event)` and
 | `ImageView` | any `gfx::Image`, aspect kept |
 | `Button`, `Toggle`, `RadioGroup` | push / toggle buttons, check boxes, segmented choices |
 | `Slider`, `TextInput` | value with keys, wheel and drag; one-line editor with filter and cursor |
-| `ListBox`, `Table`, `Tabs` | scrolling lists and tables with selection, tab bar |
+| `ListBox`, `Table`, `Tabs` | scrolling lists and tables with selection, tab bar (names lose their padding when they would not fit) |
 | `Menu`, `Dialog` | popup menu with shortcuts and check marks, modal message box |
 
 Every widget takes its colors from the `Theme`, so every theme works
